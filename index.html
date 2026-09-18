@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Echoes of the Abyss — Reborn</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="gameShell">
+    <canvas id="game" width="1280" height="720"></canvas>
+
+    <div id="hud" class="hidden">
+      <div class="hud-left panel">
+        <div class="row"><b>PV</b><div class="bar"><i id="hpBar"></i></div><span id="hpText"></span></div>
+        <div class="row"><b>XP</b><div class="bar xp"><i id="xpBar"></i></div><span id="levelText"></span></div>
+        <div class="row"><span class="gold-balance"><img src="assets/icons/coins.svg" alt="Pièces d’or"><span id="goldText">0 PO</span></span><span id="floorText">Étage 1</span></div>
+        <div id="roomText">La Crypte Oubliée</div>
+        <div id="enemyText"></div>
+      </div>
+      <div class="hud-bottom panel">
+        <span id="weaponText">Épée usée</span>
+        <span id="abilityText">Clic droit : —</span>
+        <span id="dashText">Dash : prêt</span>
+      </div>
+      <canvas id="minimap" width="180" height="140"></canvas>
+      <div id="bossHud" class="boss hidden"><b id="bossName"></b><div class="bar"><i id="bossBar"></i></div></div>
+      <div id="weaponSlots" aria-label="Armes équipées"></div><div id="achievementToast" role="status"></div><div id="chargeHud" class="hidden"><span id="chargeText"></span><div class="bar"><i id="chargeFill"></i></div></div><div id="spellBar" aria-label="Sorts achetés"></div><div id="soulBar"></div><div id="toast" role="status"></div><div id="tooltip" class="tooltip hidden"></div>
+    </div>
+
+    <section id="mainMenu" class="overlay">
+      <div class="card title-card">
+        <div class="eyebrow">ROGUELIKE · ÉDITION REBORN</div><div class="sigil">◇</div>
+        <h1>ECHOES<br><em>OF THE</em> ABYSS</h1>
+        <p>Descends dans la cathédrale engloutie.<br>Abats ses gardiens. Hérite de leurs pouvoirs.</p>
+        <button data-action="new">Entrer dans l’abîme <span>↗</span></button>
+        <button data-action="continue">Continuer</button>
+        <button data-action="roulette">Roulette de l’Abîme</button>
+        <button data-action="challenges">Défis & accessoires</button>
+        <button data-action="customize">Personnaliser le personnage</button>
+        <button data-action="shop">Boutique · équipements permanents</button>
+        <button data-action="meta">Sanctuaire</button>
+        <button data-action="options">Options</button>
+        <button data-action="help">Comment jouer</button>
+        <small id="metaMoney"></small><div class="menu-footer">10 CRÉATURES &nbsp; / &nbsp; 3 GARDIENS &nbsp; / &nbsp; LEURS POUVOIRS DEVIENNENT LES TIENS</div>
+      </div>
+    </section>
+
+    <section id="modal" class="overlay hidden"><div id="modalCard" class="card"></div></section>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>
