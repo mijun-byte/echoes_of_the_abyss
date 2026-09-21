@@ -1,0 +1,9 @@
+{
+  "name": "echoes-abyss-coop-relay",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Two-player rooms for Echoes of the Abyss; the creator simulates the game.",
+  "engines": {"node": ">=22"},
+  "scripts": {"start": "node index.cjs", "test": "node --test test.cjs"},
+  "dependencies": {"ws": "^8.18.3"}
+}

@@ -1,0 +1,13 @@
+services:
+  - type: web
+    name: echoes-abyss-coop
+    runtime: node
+    rootDir: server
+    buildCommand: npm ci
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: "22"
+      - key: ALLOWED_ORIGINS
+        value: https://mijun-byte.github.io
