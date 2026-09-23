@@ -881,10 +881,11 @@ function coopConnect(mode){
  try{url=new URL($('#coopServer').value.trim());if(!['wss:','ws:'].includes(url.protocol)||url.username||url.password||location.protocol==='https:'&&url.protocol!=='wss:')throw Error();}catch{$('#coopStatus').textContent='Indique une adresse wss:// valide (ws:// autorisé en local).';return;}
  if(mode==='join'&&!/^[0-9A-F]{10}$/.test(code)){$('#coopStatus').textContent='Le code du salon comporte 10 caractères.';return;}
  try{localStorage.setItem(COOP_PREFS,JSON.stringify({name,url:url.href}));}catch{}
- const c=coop={socket:new WebSocket(url.href),active:false,role:null,profiles:null,code:null,local:0,events:[],inputs:[{},{}],lastMessage:performance.now(),seq:0,lastSeq:-1,lastSend:0,lastFrame:performance.now(),uiKey:'',pauseOwner:null};
+ const localProfile=coopProfile({name,look:playerLook,meta:loadMeta()});
+ const c=coop={socket:new WebSocket(url.href),active:false,role:null,profiles:null,localProfile,code:null,local:0,events:[],inputs:[{},{}],lastMessage:performance.now(),seq:0,lastSeq:-1,lastSend:0,lastFrame:performance.now(),uiKey:'',pauseOwner:null};
  $('#coopBack').onclick=()=>coopDisconnect();$('#coopStatus').textContent='Connexion au serveur…';$('#coopCreate').disabled=$('#coopJoin').disabled=true;
  c.timeout=setTimeout(()=>{if(coop===c&&!c.code)coopDisconnect('Le serveur ne répond pas. Vérifie son adresse et réessaie.');},45000);
- c.socket.onopen=()=>coopSend({type:mode,protocol:COOP_PROTOCOL,code,profile:coopProfile({name,look:playerLook,meta:loadMeta()})});
+ c.socket.onopen=()=>coopSend({type:mode,protocol:COOP_PROTOCOL,code,profile:localProfile});
  c.socket.onerror=()=>{if(coop===c)coopDisconnect('Connexion impossible. Vérifie que le serveur est lancé et accepte ce site.');};
  c.socket.onclose=()=>{if(coop===c)coopDisconnect('Connexion interrompue. Le solo reste disponible ; recréez un salon pour rejouer.');};
  c.socket.onmessage=e=>{
@@ -897,9 +898,18 @@ function coopConnect(mode){
   if(m.type==='state'&&c.role==='guest'&&c.active)coopReceive(m.data);
  };
 }
+function coopLobbyPlayers(c){
+ const profiles=c.profiles?[...c.profiles]:[null,null];profiles[c.local]??=c.localProfile;
+ return profiles.map((profile,i)=>{const role=i===0?'HÔTE':'INVITÉ',mine=i===c.local?' · TOI':'',weapon=profile?WEAPONS[profile.meta.startWeapon]?.name||'Épée':'En attente';return `<article class="coop-player-card ${profile?'connected':'waiting'}"><span class="coop-player-role">${role}${mine}</span><canvas data-coop-lobby-avatar="${i}" width="180" height="180" aria-label="${profile?'Personnage de '+coopEscape(profile.name):'Emplacement libre'}"></canvas><h3>${profile?coopEscape(profile.name):'Emplacement libre'}</h3><p>${profile?'Arme de départ · '+coopEscape(weapon):'Ton partenaire apparaîtra ici'}</p><strong>${profile?'✓ PRÊT':'○ EN ATTENTE'}</strong></article>`;}).join('');
+}
+function renderCoopLobbyPlayers(c){
+ const profiles=c.profiles?[...c.profiles]:[null,null];profiles[c.local]??=c.localProfile;
+ document.querySelectorAll('[data-coop-lobby-avatar]').forEach(canvas=>{const profile=profiles[+canvas.dataset.coopLobbyAvatar],ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);const glow=ctx.createRadialGradient(90,92,8,90,92,86);glow.addColorStop(0,profile?'#315b57':'#26323b');glow.addColorStop(1,'#08151d');ctx.fillStyle=glow;ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle=profile?'#78c9b7':'#51616a';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(90,149,55,11,0,0,Math.PI*2);ctx.stroke();if(profile)drawCreature('player',90,92,96,0,null,profile.look,ctx);else{ctx.setLineDash([6,6]);ctx.beginPath();ctx.arc(90,83,38,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#8da0a8';ctx.font='36px Georgia';ctx.textAlign='center';ctx.fillText('?',90,96);}});
+}
 function coopLobby(){
- const c=coop;if(!c)return;showModal(`<div class="eyebrow">SALON PRIVÉ · 2 JOUEURS</div><h2>Prêts à descendre ?</h2><p>Code du salon</p><strong class="coop-code">${c.code}</strong><p>${c.profiles?c.profiles.map(p=>coopEscape(p.name)).join(' + '):'En attente de ton partenaire…'}</p>${c.profiles&&c.role==='host'?'<button id="coopStart">Lancer l’expédition à deux</button>':'<p>Partage ce code et la même adresse de serveur avec ton pote.</p>'}<button id="coopLeave">Quitter le salon</button>`);
- if($('#coopStart'))$('#coopStart').onclick=()=>{coopSend({type:'start'});$('#coopStart').disabled=true;};$('#coopLeave').onclick=()=>coopDisconnect();
+ const c=coop;if(!c)return;const ready=!!c.profiles,status=ready?c.role==='host'?'Les deux aventuriers sont prêts. Lance quand tu veux.':'Les deux aventuriers sont prêts. L’hôte va lancer la partie.':'Partage le code du salon et l’adresse du serveur avec ton partenaire.';
+ showModal(`<div class="coop-lobby"><div class="eyebrow">SALON PRIVÉ · 2 JOUEURS</div><h2>Rassemblement des aventuriers</h2><div class="coop-lobby-code"><span>CODE DU SALON</span><strong class="coop-code">${c.code}</strong></div><div class="coop-lobby-grid">${coopLobbyPlayers(c)}</div><p class="coop-lobby-status">${status}</p><div class="coop-lobby-actions">${ready&&c.role==='host'?'<button id="coopStart">Lancer l’expédition à deux</button>':''}<button id="coopLeave">Quitter le salon</button></div></div>`);renderCoopLobbyPlayers(c);
+ if($('#coopStart'))$('#coopStart').onclick=()=>{coopSend({type:'start'});$('#coopStart').disabled=true;$('#coopStart').textContent='Ouverture du passage…';};$('#coopLeave').onclick=()=>coopDisconnect();
 }
 function coopDisconnect(message=''){
  const c=coop;if(!c)return;clearInterval(c.netTimer);clearTimeout(c.timeout);if(game?.coopEnd?.cash&&!coopBank(game.coopEnd)){c.offline=true;c.socket.onclose=c.socket.onerror=c.socket.onmessage=null;c.socket.close();c.uiKey='';coopUI();return;}coop=null;c.socket.onclose=c.socket.onerror=c.socket.onmessage=null;c.socket.close();for(const k of Object.keys(keys))delete keys[k];mouse.down=mouse.right=false;$('#coopPanel')?.remove();mainMenu();if(message)coopMenu(message);

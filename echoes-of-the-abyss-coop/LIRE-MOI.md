@@ -4,7 +4,7 @@ Décompresse entièrement le ZIP, puis ouvre `index.html` dans Edge, Chrome ou F
 
 ## Coop en ligne à deux joueurs
 
-Le bouton **Coop en ligne · 2 joueurs** permet de créer ou rejoindre un salon privé. Chacun garde ses couleurs, accessoires et achats permanents ; l’or et le butin sont individuels. **Maintiens E près d’un partenaire à terre pendant 2 secondes pour le réanimer.**
+Le bouton **Coop en ligne · 2 joueurs** permet de créer ou rejoindre un salon privé. Le salon affiche les deux personnages, leurs pseudos, leurs apparences, leur rôle et leur arme de départ avant que l’hôte lance la partie. Chacun garde ses couleurs, accessoires et achats permanents ; l’or et le butin sont individuels. **Maintiens E près d’un partenaire à terre pendant 2 secondes pour le réanimer.**
 
 L’hôte dirige les changements de salle et les décisions après un boss. Les pauses sont partagées et chacun choisit ses améliorations de niveau. La sauvegarde solo reste intacte ; une expédition coop interrompue ne peut pas être reprise.
 
