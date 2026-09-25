@@ -7,10 +7,12 @@ const send=(s,m)=>s.send(JSON.stringify(m)),profile={name:'Test',look:{head:'min
 test('rooms, roles, isolation, capacity, disconnect and malformed packets',async()=>{
  const app=createRelay({origins:'http://test.local'});await new Promise(r=>app.server.listen(0,'127.0.0.1',r));const url='ws://127.0.0.1:'+app.server.address().port+'/coop';const sockets=[];
  try{
-  const host=await socket(url);sockets.push(host);let msg=read(host,'room');send(host,{type:'create',protocol:1,profile});const room=await msg;assert.match(room.code,/^[0-9A-F]{10}$/);
-  const guest=await socket(url);sockets.push(guest);msg=read(guest,'error');send(guest,{type:'join',protocol:1,code:'0000000000',profile});assert.match((await msg).message,/introuvable/);
-  const readyH=read(host,'ready'),readyG=read(guest,'ready');send(guest,{type:'join',protocol:1,code:room.code,profile});await readyH;await readyG;
-  const third=await socket(url);sockets.push(third);msg=read(third,'error');send(third,{type:'join',protocol:1,code:room.code,profile});assert.match((await msg).message,/complet/);
+  const host=await socket(url);sockets.push(host);let msg=read(host,'room');send(host,{type:'create',protocol:2,profile});const room=await msg;assert.match(room.code,/^[0-9A-F]{10}$/);
+  const guest=await socket(url);sockets.push(guest);msg=read(guest,'error');send(guest,{type:'join',protocol:2,code:'0000000000',profile});assert.match((await msg).message,/introuvable/);
+  const readyH=read(host,'ready'),readyG=read(guest,'ready'),stateH=read(host,'lobby_state'),stateG=read(guest,'lobby_state');send(guest,{type:'join',protocol:2,code:room.code,profile});await readyH;await readyG;const initialH=await stateH,initialG=await stateG;assert.deepEqual(initialH.players.map(p=>p.ready),[true,false]);assert.deepEqual(initialG.players.map(p=>!!p.profile),[true,true]);
+  const third=await socket(url);sockets.push(third);msg=read(third,'error');send(third,{type:'join',protocol:2,code:room.code,profile});assert.match((await msg).message,/complet/);
+  msg=read(host,'error');send(host,{type:'start'});assert.match((await msg).message,/prêt/);
+  const updated=read(host,'lobby_state');send(guest,{type:'lobby_update',profile:{...profile,look:{head:'red',body:'blue'}},ready:true});const lobby=await updated;assert.equal(lobby.players[1].profile.look.head,'red');assert.equal(lobby.players[1].ready,true);
   const hstart=read(host,'start'),gstart=read(guest,'start');send(host,{type:'start'});await hstart;await gstart;
   msg=read(host,'input');send(guest,{type:'input',data:{keys:{d:true},seq:1}});assert.equal((await msg).data.keys.d,true);
   msg=read(guest,'state');send(host,{type:'state',data:{floor:2}});assert.equal((await msg).data.floor,2);

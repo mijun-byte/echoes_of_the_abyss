@@ -29,7 +29,7 @@ https://mijun-byte.github.io/echoes_of_the_abyss/
 
 4. Dans les variables d’environnement, ajoute **ALLOWED_ORIGINS** = **https://mijun-byte.github.io** (sans le chemin du dépôt, sans slash final). Tu peux aussi définir **NODE_VERSION** = **22**.
 5. Choisis l’offre d’hébergement qui te convient en vérifiant le prix affiché, puis lance le déploiement. Une seule instance suffit ; les salons sont conservés dans sa mémoire, donc ne configure pas plusieurs instances.
-6. Quand le service est prêt, copie son URL `https://NOM-DU-SERVICE.onrender.com`. En ouvrant `/health` à la fin de cette URL, tu dois voir `{"ok":true,"protocol":1}`.
+6. Quand le service est prêt, copie son URL `https://NOM-DU-SERVICE.onrender.com`. En ouvrant `/health` à la fin de cette URL, tu dois voir `{"ok":true,"protocol":2}`.
 
 Le fichier `render.yaml` fournit aussi les paramètres de déploiement pour une installation via Blueprint. Aucune offre payante n’a été souscrite ni aucun serveur déployé par la préparation de ces fichiers.
 
@@ -43,6 +43,8 @@ Pour un premier essai, aucune autre modification n’est nécessaire :
 2. Dans **Adresse du serveur**, mets `wss://NOM-DU-SERVICE.onrender.com/coop`.
 3. Ton pote renseigne exactement la même adresse. L’adresse et le pseudo sont mémorisés sur chaque appareil.
 
+Après une mise à jour du jeu ou du relais, actualisez tous les deux la page (Ctrl + F5). Cette version utilise le protocole coop 2 ; un ancien onglet ou un relais pas encore redéployé affichera un message de versions incompatibles.
+
 Pour éviter de saisir cette adresse à chaque nouvel appareil, modifie ensuite `coop-config.js` dans GitHub :
 
 ```js
@@ -55,8 +57,8 @@ Valide la modification et attends la mise à jour GitHub Pages. Actualisez tous 
 
 - Choisissez votre apparence et vos achats au menu avant de rejoindre.
 - Le premier joueur clique sur **Créer un salon privé**, puis communique le code à 10 caractères à son pote.
-- Le second saisit ce code et clique sur **Rejoindre le salon**.
-- Le créateur clique sur **Lancer l’expédition à deux**.
+- Le second saisit ce code, clique sur **Rejoindre le salon**, peut personnaliser son apparence dans le salon, puis clique sur **Prêt**.
+- Le créateur voit les personnages, les apparences et les états de présence ; il clique sur **Lancer l’expédition à deux** quand l’invité est prêt.
 - Les commandes restent identiques : ZQSD/WASD/flèches, souris, Espace, Tab, E, F/R/T, clic droit.
 - **Maintenir E pendant 2 secondes**, à moins de 75 pixels du partenaire tombé, le relève avec 35 % de ses PV et 2 secondes de protection.
 - **I** ouvre l’équipement personnel ; **Échap** ouvre la pause. La pause s’applique aux deux joueurs ; celui qui l’a demandée reprend. Changer d’onglet met également en pause.

@@ -69,18 +69,18 @@ function saveLook(value){const next=normalizeLook(value);if(["hat","face"].some(
 function lookColor(id){return CHARACTER_COLORS.find(c=>c.id===id)||CHARACTER_COLORS[0];}
 function shadeColor(hex,factor){return '#'+[1,3,5].map(i=>Math.round(parseInt(hex.slice(i,i+2),16)*factor).toString(16).padStart(2,'0')).join('');}
 function customization(){
- if(game)game.paused=true;let draft={...playerLook};
+ if(game)game.paused=true;let draft={...playerLook};const lobbyEdit=!!(coop&&!coop.active&&coop.code);
  const palette=part=>CHARACTER_COLORS.map(c=>`<button type="button" class="color-choice" data-part="${part}" data-color="${c.id}" aria-label="${part==='head'?'Tête':'Corps'} : ${c.name}" aria-pressed="${draft[part]===c.id}"><span class="color-dot" style="background:${c.hex}"></span><span>${c.name}</span><span class="color-check" aria-hidden="true">✓</span></button>`).join('');
  showModal(`<div class="eyebrow">TON PERSONNAGE · TES COULEURS</div><h2>Personnalisation</h2><p>La même silhouette, 100 combinaisons. Choisis séparément la tête et le corps.</p><div class="custom-layout"><div class="custom-preview"><canvas id="characterPreview" width="280" height="300" aria-label="Aperçu du personnage"></canvas><p id="lookSummary"></p><small>Apparence gratuite · Aucun effet sur les statistiques</small></div><div class="custom-palettes"><h3 id="headHeading">Couleur de la tête</h3><div class="color-grid" role="group" aria-labelledby="headHeading">${palette('head')}</div><h3 id="bodyHeading">Couleur du corps</h3><div class="color-grid" role="group" aria-labelledby="bodyHeading">${palette('body')}</div></div></div><div class="accessory-picker"><h3>Accessoires</h3><p>Casquette et lunettes rondes offertes. Les autres se gagnent dans Défis & accessoires.</p>${['hat','face'].map(slot=>`<label for="accessory-${slot}">${slot==='hat'?'Chapeau':'Lunettes'}</label><select id="accessory-${slot}" data-accessory-slot="${slot}"><option value="none">Aucun</option>${ACCESSORIES.filter(a=>a.slot===slot).map(a=>`<option value="${a.id}" ${draft[slot]===a.id?'selected':''} ${unlockedAccessory(a.id)?'':'disabled'}>${a.name}${unlockedAccessory(a.id)?'':' — Défi : '+CHALLENGES.find(c=>c.id===a.challenge).name}</option>`).join('')}</select>`).join('')}</div><p id="lookStatus" role="status"></p><div class="custom-actions"><button id="lookReset">Apparence d’origine</button><button id="lookCancel">Annuler</button><button id="lookSave">Enregistrer l’apparence</button></div>`);
  function refresh(){
   $('#modalCard').querySelectorAll('[data-color]').forEach(b=>b.setAttribute('aria-pressed',String(draft[b.dataset.part]===b.dataset.color)));
   const canvas=$('#characterPreview'),ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);ctx.fillStyle='#091821';ctx.fillRect(0,0,canvas.width,canvas.height);
   ctx.strokeStyle='#7ba69b33';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(140,251,90,17,0,0,Math.PI*2);ctx.stroke();drawCreature('player',140,155,152,0,null,draft,ctx);
-  $('#lookSummary').textContent=`Tête : ${lookColor(draft.head).name} · Corps : ${lookColor(draft.body).name}`;
+  $('#lookSummary').textContent=`Tête : ${lookColor(draft.head).name} · Corps : ${lookColor(draft.body).name}`;if(lobbyEdit)coopPublishLobbyLook(draft);
  }
  $('#modalCard').onclick=e=>{const b=e.target.closest('[data-color]');if(!b)return;draft[b.dataset.part]=b.dataset.color;refresh();};
- const close=()=>{if(game)pauseMenu();else hideModal();};
- for(const slot of ['hat','face'])$('#accessory-'+slot).onchange=e=>{if(unlockedAccessory(e.target.value)){if(e.target.value==='none')delete draft[slot];else draft[slot]=e.target.value;refresh();}};$('#lookReset').onclick=()=>{draft=normalizeLook(null);for(const slot of ['hat','face'])$('#accessory-'+slot).value='none';refresh();};$('#lookCancel').onclick=close;
+ const close=()=>{if(game)pauseMenu();else if(coop&&!coop.active&&coop.code)coopLobby();else hideModal();};
+ for(const slot of ['hat','face'])$('#accessory-'+slot).onchange=e=>{if(unlockedAccessory(e.target.value)){if(e.target.value==='none')delete draft[slot];else draft[slot]=e.target.value;refresh();}};$('#lookReset').onclick=()=>{draft=normalizeLook(null);for(const slot of ['hat','face'])$('#accessory-'+slot).value='none';refresh();};$('#lookCancel').onclick=()=>{if(lobbyEdit)coopPublishLobbyLook(playerLook);close();};
  $('#lookSave').onclick=()=>{if(saveLook(draft))close();else $('#lookStatus').textContent='Impossible de sauvegarder : vérifie le stockage du navigateur puis réessaie.';};refresh();
 }
 
@@ -730,7 +730,8 @@ document.addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 C.addEventListener("mousemove",e=>{let r=C.getBoundingClientRect();mouse.x=(e.clientX-r.left)*W/r.width;mouse.y=(e.clientY-r.top)*H/r.height});
 C.addEventListener("mousedown",e=>{if(e.button===0)mouse.down=true;if(e.button===2)mouse.right=true});document.addEventListener("mouseup",e=>{if(e.button===0)mouse.down=false;if(e.button===2)mouse.right=false});C.oncontextmenu=e=>e.preventDefault();
 $("#mainMenu").addEventListener("click",e=>{let a=e.target.dataset.action;if(a==="new")startGame();if(a==="continue")continueRun();if(a==="options")options();if(a==="help")help();if(a==="meta")metaMenu();if(a==="shop")bankShop();if(a==="roulette")rouletteMenu();if(a==="coop")coopMenu();if(a==="customize")customization();if(a==="challenges")challengesMenu()});
-function loop(t){if(coop?.active){coopFrame(t);requestAnimationFrame(loop);return;}let dt=Math.min(.033,(t-last)/1000);last=t;if(game){game.update(dt);game.draw()}requestAnimationFrame(loop)}requestAnimationFrame(loop);mainMenu();
+function drawMenuHero(t){const canvas=$('#menuHero');if(!canvas||$('#mainMenu').classList.contains('hidden'))return;const ctx=canvas.getContext('2d'),w=canvas.width,time=t/1000,name=$('#menuHeroName');if(name){let next='Aventurier';try{next=JSON.parse(localStorage.getItem('echoesCoopSettingsV1'))?.name||next;}catch{}if(name.textContent!==next)name.textContent=next;}ctx.clearRect(0,0,w,canvas.height);ctx.save();ctx.translate(w/2,canvas.height*.64+Math.sin(time*1.8)*4);ctx.strokeStyle='#7bd0ba38';ctx.lineWidth=1;for(const radius of [55,77,106]){ctx.beginPath();ctx.ellipse(0,0,radius,radius*.3,0,0,Math.PI*2);ctx.stroke();}for(let i=0;i<12;i++){const a=i*Math.PI/6+time*.08;ctx.fillStyle=i%3?'#8fd6c766':'#e4c47d99';ctx.beginPath();ctx.arc(Math.cos(a)*90,Math.sin(a)*26,1.5,0,Math.PI*2);ctx.fill();}ctx.rotate(Math.sin(time*.7)*.035);drawCreature('player',0,-42+Math.sin(time*1.8)*3,176,time,null,playerLook,ctx);ctx.restore();}
+function loop(t){if(coop?.active){coopFrame(t);requestAnimationFrame(loop);return;}let dt=Math.min(.033,(t-last)/1000);last=t;if(game){game.update(dt);game.draw()}else drawMenuHero(t);requestAnimationFrame(loop)}requestAnimationFrame(loop);mainMenu();
 const SOULS=[
  {name:"Brise-serment",icon:"Ⅰ",color:"#efac79",cd:8,desc:"Une onde circulaire frappe les ennemis proches et te protège pendant 1,2 seconde."},
  {name:"Constellation du néant",icon:"Ⅱ",color:"#ba9dff",cd:7,desc:"Une salve d’éclats traverse la salle dans la direction du curseur."},
@@ -864,7 +865,7 @@ Game.prototype.cashOut=function(){
 };
 
 // Two-player host-authoritative simulation. Solo save keys are never written here.
-const COOP_PROTOCOL=1,COOP_PREFS='echoesCoopSettingsV1',COOP_RECEIPTS='coopSettled';
+const COOP_PROTOCOL=2,COOP_PREFS='echoesCoopSettingsV1',COOP_RECEIPTS='coopSettled';
 function coopEscape(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 function coopProfile(raw){
  const m=raw?.meta||{},ids=[...SHOP_ITEMS,...SHOP_WEAPONS,...SPELLS].map(s=>s.id);
@@ -891,25 +892,32 @@ function coopConnect(mode){
  c.socket.onmessage=e=>{
   if(coop!==c)return;c.lastMessage=performance.now();let m;try{m=JSON.parse(e.data);}catch{return;}
   if(m.type==='error'||m.type==='ended'){coopDisconnect(m.message);return;}
-  if(m.type==='room'){clearTimeout(c.timeout);c.role=m.role;c.local=m.role==='host'?0:1;c.code=m.code;coopLobby();}
-  if(m.type==='ready'){c.profiles=m.profiles.map(coopProfile);coopLobby();}
+  if(m.type==='room'){clearTimeout(c.timeout);c.role=m.role;c.local=m.role==='host'?0:1;c.code=m.code;c.ready=c.local===0;coopLobby();}
+  if(m.type==='ready'){c.profiles=m.profiles.map(coopProfile);if(!c.lobbyPlayers)c.lobbyPlayers=c.profiles.map((profile,i)=>({role:i===0?'host':'guest',profile,ready:i===0}));if(!c.active&&$('#modalCard .coop-lobby'))coopLobby();}
+  if(m.type==='lobby_state'&&!c.active){c.lobbyPlayers=Array.isArray(m.players)?m.players.map((p,i)=>({role:i===0?'host':'guest',profile:p?.profile?coopProfile(p.profile):null,ready:!!p?.ready})):null;c.ready=c.lobbyPlayers?.[c.local]?.ready??(c.local===0);c.profiles=c.lobbyPlayers?.every(p=>p.profile)?c.lobbyPlayers.map(p=>p.profile):null;if($('#modalCard .coop-lobby'))coopLobby();}
   if(m.type==='start')coopStart();
   if(m.type==='input'&&c.role==='host'&&c.active){const input=coopInput(m.data);if(input.seq>c.lastSeq){c.lastSeq=input.seq;c.lastInput=performance.now();c.inputs[1]=input;c.eventsRemote=(c.eventsRemote||[]).concat(input.events).slice(-30);}}
   if(m.type==='state'&&c.role==='guest'&&c.active)coopReceive(m.data);
  };
 }
 function coopLobbyPlayers(c){
- const profiles=c.profiles?[...c.profiles]:[null,null];profiles[c.local]??=c.localProfile;
- return profiles.map((profile,i)=>{const role=i===0?'HÔTE':'INVITÉ',mine=i===c.local?' · TOI':'',weapon=profile?WEAPONS[profile.meta.startWeapon]?.name||'Épée':'En attente';return `<article class="coop-player-card ${profile?'connected':'waiting'}"><span class="coop-player-role">${role}${mine}</span><canvas data-coop-lobby-avatar="${i}" width="180" height="180" aria-label="${profile?'Personnage de '+coopEscape(profile.name):'Emplacement libre'}"></canvas><h3>${profile?coopEscape(profile.name):'Emplacement libre'}</h3><p>${profile?'Arme de départ · '+coopEscape(weapon):'Ton partenaire apparaîtra ici'}</p><strong>${profile?'✓ PRÊT':'○ EN ATTENTE'}</strong></article>`;}).join('');
+ const slots=c.lobbyPlayers?.length===2?c.lobbyPlayers:[{role:'host',profile:c.local===0?c.localProfile:c.profiles?.[0]||null,ready:true},{role:'guest',profile:c.local===1?c.localProfile:c.profiles?.[1]||null,ready:!!c.ready}];
+ return slots.map((slot,i)=>{const profile=slot.profile,role=i===0?'HÔTE':'INVITÉ',mine=i===c.local?' · TOI':'',weapon=profile?WEAPONS[profile.meta.startWeapon]?.name||'Épée':'En attente';return `<article class="coop-player-card ${profile?'connected':'waiting'}"><span class="coop-player-role">${role}${mine}</span><canvas data-coop-lobby-avatar="${i}" width="180" height="180" aria-label="${profile?'Personnage de '+coopEscape(profile.name):'Emplacement libre'}"></canvas><h3>${profile?coopEscape(profile.name):'Emplacement libre'}</h3><p>${profile?'Arme de départ · '+coopEscape(weapon):'Ton partenaire apparaîtra ici'}</p><strong>${profile?(slot.ready?'✓ PRÊT':'○ PAS ENCORE PRÊT'):'○ EN ATTENTE'}</strong></article>`;}).join('');
 }
 function renderCoopLobbyPlayers(c){
  const profiles=c.profiles?[...c.profiles]:[null,null];profiles[c.local]??=c.localProfile;
  document.querySelectorAll('[data-coop-lobby-avatar]').forEach(canvas=>{const profile=profiles[+canvas.dataset.coopLobbyAvatar],ctx=canvas.getContext('2d');ctx.clearRect(0,0,canvas.width,canvas.height);const glow=ctx.createRadialGradient(90,92,8,90,92,86);glow.addColorStop(0,profile?'#315b57':'#26323b');glow.addColorStop(1,'#08151d');ctx.fillStyle=glow;ctx.fillRect(0,0,canvas.width,canvas.height);ctx.strokeStyle=profile?'#78c9b7':'#51616a';ctx.lineWidth=2;ctx.beginPath();ctx.ellipse(90,149,55,11,0,0,Math.PI*2);ctx.stroke();if(profile)drawCreature('player',90,92,96,0,null,profile.look,ctx);else{ctx.setLineDash([6,6]);ctx.beginPath();ctx.arc(90,83,38,0,Math.PI*2);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle='#8da0a8';ctx.font='36px Georgia';ctx.textAlign='center';ctx.fillText('?',90,96);}});
 }
 function coopLobby(){
- const c=coop;if(!c)return;const ready=!!c.profiles,status=ready?c.role==='host'?'Les deux aventuriers sont prêts. Lance quand tu veux.':'Les deux aventuriers sont prêts. L’hôte va lancer la partie.':'Partage le code du salon et l’adresse du serveur avec ton partenaire.';
- showModal(`<div class="coop-lobby"><div class="eyebrow">SALON PRIVÉ · 2 JOUEURS</div><h2>Rassemblement des aventuriers</h2><div class="coop-lobby-code"><span>CODE DU SALON</span><strong class="coop-code">${c.code}</strong></div><div class="coop-lobby-grid">${coopLobbyPlayers(c)}</div><p class="coop-lobby-status">${status}</p><div class="coop-lobby-actions">${ready&&c.role==='host'?'<button id="coopStart">Lancer l’expédition à deux</button>':''}<button id="coopLeave">Quitter le salon</button></div></div>`);renderCoopLobbyPlayers(c);
- if($('#coopStart'))$('#coopStart').onclick=()=>{coopSend({type:'start'});$('#coopStart').disabled=true;$('#coopStart').textContent='Ouverture du passage…';};$('#coopLeave').onclick=()=>coopDisconnect();
+ const c=coop;if(!c)return;const slots=c.lobbyPlayers?.length===2?c.lobbyPlayers:[{role:'host',profile:c.local===0?c.localProfile:null,ready:true},{role:'guest',profile:c.local===1?c.localProfile:null,ready:!!c.ready}],count=slots.filter(p=>p.profile).length,canStart=count===2&&slots.every(p=>p.ready),status=count<2?'Partage le code du salon avec ton partenaire.':canStart?'Les deux aventuriers sont prêts. L’hôte peut lancer la partie.':c.role==='host'?'En attente que ton partenaire se déclare prêt.':'Tu peux personnaliser ton personnage, puis cliquer sur Prêt.';
+ showModal(`<div class="coop-lobby"><div class="eyebrow">SALON PRIVÉ · 2 JOUEURS</div><h2>Rassemblement des aventuriers</h2><div class="coop-lobby-code"><span>CODE DU SALON</span><strong class="coop-code">${c.code}</strong></div><div class="coop-lobby-details"><span>Joueurs <b>${count} / 2</b></span><span>Mode <b>Coop privée</b></span><span>Progression <b>Infini · Étage 1</b></span></div><div class="coop-lobby-grid">${coopLobbyPlayers(c)}</div><p class="coop-lobby-status">${status}</p><div class="coop-lobby-actions"><button id="coopCustomize">Personnaliser mon personnage</button>${c.role==='guest'?`<button id="coopReady">${c.ready?'Annuler Prêt':'Prêt'}</button>`:''}${c.role==='host'?`<button id="coopStart" ${canStart?'':'disabled'}>Lancer l’expédition à deux</button>`:''}<button id="coopLeave">Quitter le salon</button></div></div>`);renderCoopLobbyPlayers(c);
+ $('#coopCustomize').onclick=customization;if($('#coopReady'))$('#coopReady').onclick=()=>{c.ready=!c.ready;coopPublishLobbyLook(playerLook);coopLobby();};
+ if($('#coopStart'))$('#coopStart').onclick=()=>{if(!canStart)return;coopSend({type:'start'});$('#coopStart').disabled=true;$('#coopStart').textContent='Ouverture du passage…';};$('#coopLeave').onclick=()=>coopDisconnect();
+}
+function coopPublishLobbyLook(look=playerLook){
+ const c=coop;if(!c||c.active||!c.code)return false;c.localProfile=coopProfile({...c.localProfile,look});c.ready=c.local===0?true:!!c.ready;
+ const slots=c.lobbyPlayers?.length===2?[...c.lobbyPlayers]:[{role:'host',profile:null,ready:true},{role:'guest',profile:null,ready:false}];slots[c.local]={role:c.local===0?'host':'guest',profile:c.localProfile,ready:c.ready};c.lobbyPlayers=slots;c.profiles=slots.every(p=>p.profile)?slots.map(p=>p.profile):null;
+ coopSend({type:'lobby_update',profile:c.localProfile,ready:c.ready});return true;
 }
 function coopDisconnect(message=''){
  const c=coop;if(!c)return;clearInterval(c.netTimer);clearTimeout(c.timeout);if(game?.coopEnd?.cash&&!coopBank(game.coopEnd)){c.offline=true;c.socket.onclose=c.socket.onerror=c.socket.onmessage=null;c.socket.close();c.uiKey='';coopUI();return;}coop=null;c.socket.onclose=c.socket.onerror=c.socket.onmessage=null;c.socket.close();for(const k of Object.keys(keys))delete keys[k];mouse.down=mouse.right=false;$('#coopPanel')?.remove();mainMenu();if(message)coopMenu(message);
